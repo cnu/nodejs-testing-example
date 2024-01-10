@@ -1,44 +1,67 @@
 const express = require('express');
 const router = express.Router();
-const createError = require('http-errors');
+const products = require('../services/products');
 
-// Products Array
-const products = [{ id: '1', name: 'Playstation 5', inStock: false }];
-
-// GET / => array of items
-router.get('/', (req, res) => {
-    res.json(products);
+router.get('/', async (req, res, next) => {
+    try {
+        page = req.query.page || 1;
+        size = req.query.size || 10;
+        res.json(await products.getMultiple(page, size));
+    } catch (err) {
+        console.error(`Error while getting products `, err.message);
+        next(err);
+    }
 });
 
-// GET / => items by ID
-router.get('/:id', (req, res, next) => {
-    const product = products.find(
-        (product) => product.id === String(req.params.id)
-    );
-
-    // GET /id => 404 if item not found
-    if (!product) {
-        return next(createError(404, 'Not Found'));
+router.get('/:id', async (req, res, next) => {
+    try {
+        res.json(await products.getOne(req.params.id));
+    } catch (err) {
+        console.error(`Error while getting product `, err.message);
+        next(err);
     }
-
-    res.json(product);
 });
 
-router.post('/', (req, res, next) => {
-    const { body } = req;
-
-    if (typeof body.name !== 'string') {
-        return next(createError(400, 'Validation Error'));
+router.get('/sku/:sku', async (req, res, next) => {
+    try {
+        res.json(await products.getBySKU(req.params.sku));
+    } catch (err) {
+        console.error(`Error while getting product `, err.message);
+        next(err);
     }
+});
 
-    const newProduct = {
-        id: '1',
-        name: body.name,
-        inStock: false,
-    };
+router.post('/', async (req, res, next) => {
+    try {
+        res.json(await products.create(req.body.sku, req.body.name, req.body.in_stock));
+    } catch (err) {
+        console.error(`Error while creating product `, err.message);
+        next(err);
+    }
+});
 
-    products.push(newProduct);
-    res.status(201).json(newProduct);
+router.put('/:id', async (req, res, next) => {
+    try {
+        res.json(await products.update(req.params.id, req.body.sku, req.body.name, req.body.in_stock));
+    } catch (err) {
+        console.error(`Error while updating product `, err.message);
+        next(err);
+    }
+});
+
+router.delete('/:id', async (req, res, next) => {
+    try {
+        res.json(await products.remove(req.params.id));
+    } catch (err) {
+        console.error(`Error while deleting product `, err.message);
+        next(err);
+    }
+});
+
+router.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.status || 500);
+    res.json({ message: err.message });
 });
 
 module.exports = router;
